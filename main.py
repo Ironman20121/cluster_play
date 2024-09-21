@@ -17,8 +17,6 @@ import skfuzzy as fuzz
 from scipy.spatial.distance import cdist
 #################################################################################
 
-
-
 class ClusterPlay:
     def __init__(self, file_name):
         # initial class variables
@@ -39,8 +37,8 @@ class ClusterPlay:
         # Dropping customer id 
         data = data.drop("CustomerID", axis=1)
         
-        # One-hot encoding for the Genre column 
-        data = pd.get_dummies(data, columns=['Genre'], drop_first=True)  # This will create a column 'Genre_Male'
+        # One-hot encoding for the Gender column 
+        data = pd.get_dummies(data, columns=['Gender'], drop_first=True)  # This will create a column 'Gender_Male'
 
         return data
 
@@ -53,6 +51,7 @@ class ClusterPlay:
         plt.figure(figsize=(10, 8))
         sns.heatmap(corr_matrix, annot=True, cmap="coolwarm")
         plt.title("Correlation Graph")
+        plt.show()
         plt.savefig("correlation_graph.png")
         plt.close()
 
@@ -65,19 +64,21 @@ class ClusterPlay:
         plt.xlabel('Annual Income')
         plt.ylabel('Spending Score')
         plt.title('Customer Data')
+        plt.show()
         plt.savefig("customer_data_scatter.png")
         plt.close()
 
         ######### by gender ############
         plt.figure(figsize=(10, 6))
-        for gender in self.data['Genre_Male'].unique():
-            plt.scatter(self.data[self.data['Genre_Male'] == gender]['Annual Income (k$)'], 
-                        self.data[self.data['Genre_Male'] == gender]['Spending Score (1-100)'], 
+        for gender in self.data['Gender_Male'].unique():
+            plt.scatter(self.data[self.data['Gender_Male'] == gender]['Annual Income (k$)'], 
+                        self.data[self.data['Gender_Male'] == gender]['Spending Score (1-100)'], 
                         label='Male' if gender == 1 else 'Female', alpha=0.7)
         plt.xlabel('Annual Income (k$)')
         plt.ylabel('Spending Score (1-100)')
         plt.title('Annual Income vs Spending Score by Gender')
         plt.legend()
+        plt.show()
         plt.savefig("income_vs_spending_by_gender.png")
         plt.close()
 
@@ -94,6 +95,7 @@ class ClusterPlay:
         plt.ylabel('Spending Score (1-100)')
         plt.title('Annual Income vs Spending Score by Age Range')
         plt.legend()
+        plt.show()
         plt.savefig("income_vs_spending_by_age.png")
         plt.close()
 
@@ -111,6 +113,7 @@ class ClusterPlay:
         plt.title('Spending Score Distribution')
 
         plt.tight_layout()
+        plt.show()
         plt.savefig("distribution_plots.png")
         plt.close()
 
@@ -119,7 +122,7 @@ class ClusterPlay:
     def elbow_method(self):
         inertia = []
         for i in range(1, 11):
-            kmeans = KMeans(n_clusters=i, random_state=42)
+            kmeans = KMeans(n_clusters=i, random_state=42, n_init=10)
             kmeans.fit(self.scaled_data)
             inertia.append(kmeans.inertia_)
         plt.figure(figsize=(10, 8))
@@ -127,11 +130,12 @@ class ClusterPlay:
         plt.xlabel('Number of Clusters')
         plt.ylabel('Inertia')
         plt.title('Elbow Method')
+        plt.show()
         plt.savefig("elbow.png")
         plt.close()
 
     def kmeans_clustering(self, n_clusters):
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42)
+        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
         kmeans.fit(self.scaled_data)
         self.data['KMeans Cluster'] = kmeans.labels_
         return kmeans.labels_, kmeans
@@ -152,7 +156,7 @@ class ClusterPlay:
         return fuzzy_labels, fpc
 
     def gaussian_mixture_clustering(self, n_clusters):
-        gmm = GaussianMixture(n_components=n_clusters, random_state=42)
+        gmm = GaussianMixture(n_components=n_clusters, random_state=42, n_init=10)
         gmm.fit(self.scaled_data)
         gmm_labels = gmm.predict(self.scaled_data)
         self.data['GMM Cluster'] = gmm_labels
@@ -170,6 +174,7 @@ class ClusterPlay:
         plt.xlabel('Feature 1 (scaled)')
         plt.ylabel('Feature 2 (scaled)')
         plt.colorbar(label='Cluster Label')
+        plt.show()
         plt.savefig(f"{title.replace(' ', '_').lower()}.png")
         plt.close()
 
@@ -217,4 +222,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
