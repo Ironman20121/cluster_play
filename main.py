@@ -1,9 +1,7 @@
 #! /usr/bin/env python
 
 #############################################################################
-#Name :Kundan ,Erin, Taj, Elliott
 #Project : 1
-
 ########## imports ###########################################################
 import pandas as pd
 import numpy as np
@@ -16,6 +14,7 @@ from sklearn.metrics import silhouette_score
 import skfuzzy as fuzz
 from scipy.spatial.distance import cdist
 from sklearn.decomposition import PCA
+from sklearn.metrics import davies_bouldin_score, calinski_harabasz_score, adjusted_rand_score, normalized_mutual_info_score
 #################################################################################
 
 
@@ -41,7 +40,7 @@ class ClusterPlay:
         data = data.drop("CustomerID", axis=1)
         
         # One-hot encoding for the Genre column 
-        data = pd.get_dummies(data, columns=['Genre'], drop_first=True)  # This will create a column 'Genre_Male'
+        data = pd.get_dummies(data, columns=['Gender'], drop_first=True)  # This will create a column 'Gender_Male'
 
         return data
 
@@ -58,7 +57,6 @@ class ClusterPlay:
         plt.savefig("correlation_graph.png")
         plt.close()
 
-    #### added taj code here ########
 
     def visualize_data(self):
         # Visualize the distribution of age, income, and spending score
@@ -73,9 +71,9 @@ class ClusterPlay:
 
         ######### by gender ############
         plt.figure(figsize=(10, 6))
-        for gender in self.data['Genre_Male'].unique():
-            plt.scatter(self.data[self.data['Genre_Male'] == gender]['Annual Income (k$)'], 
-                        self.data[self.data['Genre_Male'] == gender]['Spending Score (1-100)'], 
+        for gender in self.data['Gender_Male'].unique():
+            plt.scatter(self.data[self.data['Gender_Male'] == gender]['Annual Income (k$)'], 
+                        self.data[self.data['Gender_Male'] == gender]['Spending Score (1-100)'], 
                         label='Male' if gender == 1 else 'Female', alpha=0.7)
         plt.xlabel('Annual Income (k$)')
         plt.ylabel('Spending Score (1-100)')
@@ -207,7 +205,6 @@ class ClusterPlay:
         return kmeans.labels_, kmeans
 
     ########### not using this ##################
-    ######## added taj code here where ever distortion is present  #################
     def calculate_distortion(self, model):
         # Calculate distortion
         distances = cdist(self.scaled_data, model.cluster_centers_, 'euclidean')
@@ -268,26 +265,58 @@ class ClusterPlay:
         plt.savefig(f"{title.replace(' ', '_').lower()}.png")
         plt.close()
 
+    
+    
+    def aic_method_gaussian(self, max_clusters=10):
+        aic_values = []
+        for i in range(1, max_clusters + 1):
+            gmm = GaussianMixture(n_components=i, random_state=24)
+            gmm.fit(self.scaled_data)
+            aic_values.append(gmm.aic(self.scaled_data))
+
+        # Plotting AIC values
+        plt.figure(figsize=(10, 6))
+        plt.plot(range(1, max_clusters + 1), aic_values, marker='o')
+        plt.xlabel('Number of Clusters')
+        plt.ylabel('AIC')
+        plt.title('AIC for Gaussian Mixture Model')
+        plt.xticks(range(1, max_clusters + 1))
+        plt.grid()
+        plt.savefig("aic_gaussian_mixture.png")
+        plt.show()
+        plt.close()
+    
+    #fuc override
+    def evaluate_clustering(self, labels):
+        silhouette_avg = silhouette_score(self.scaled_data, labels)
+        dbi = davies_bouldin_score(self.scaled_data, labels)
+        ch_index = calinski_harabasz_score(self.scaled_data, labels)
+        
+        print(f'Silhouette Score: {silhouette_avg}')
+        print(f'Davies-Bouldin Index: {dbi}')
+        print(f'Calinski-Harabasz Index: {ch_index}')
+        
+
 
 def main():
-    file_name = "~/project1/Mall_Customers.csv"
+    file_name = "/jet/home/suddapal/project1_1/Mall_Customers.xls"
     pro = ClusterPlay(file_name)
     # visualize data 
     pro.visualize_data()
     # checking relation between features
     pro.correlation_graph()
     #normalize features
+    #print(pro.data.head())
     pro.normalize_features(pro.data[["Age", "Annual Income (k$)", "Spending Score (1-100)"]])
     # elbow method
     # pro.elbow_method()
-   
     ################# k-means #################################################
 
   
     ## elbow method include both distortion ,elbow and graph
     print("K means")
     pro.elbow_method_kmeans()
-    kmeans_labels, kmeans_model = pro.kmeans_clustering(n_clusters=5)
+    kmeans_labels, kmeans_model = pro.kmeans_clustering(n_clusters=4)
     pro.evaluate_clustering(kmeans_labels)
     # plot k -means cl
     #print(kmeans_labels)
@@ -301,7 +330,7 @@ def main():
     ########################## fuzzy  k-means######################################
     print("fuzzy k means")
     pro.elbow_method_fuzzy()
-    fuzzy_labels, fpc = pro.fuzzy_cmeans_clustering(n_clusters=5)
+    fuzzy_labels, fpc = pro.fuzzy_cmeans_clustering(n_clusters=4)
     fuzzy_silhouette = pro.evaluate_clustering(fuzzy_labels)
     print(f'Fuzzy Partition Coefficient: {fpc}')
     # plot fkm
@@ -310,19 +339,16 @@ def main():
     ######################### fuzzy k-means ########################################
 
 
-
     ######################## gaussian Mixture ####################################
     print("gaussian")
-    gmm_labels,gmm_model = pro.gaussian_mixture_clustering(n_clusters=5)
-    pro.evaluate_clustering(gmm_labels)
-  
-    ## for now not able calucuate distortion got to see the methods  is working both fuzz and gaus
-    #distortion = pro.calculate_distortion(gmm_model)
-    #print(f'Distortion: {distortion}')
 
+    pro.aic_method_gaussian()
+    gmm_labels,gmm_model = pro.gaussian_mixture_clustering(n_clusters=4)
+    pro.evaluate_clustering(gmm_labels)
 
     # plot GMM 
     pro.plot_clusters(gmm_labels, "Gaussian Mixture Model Clustering")
+    ####################### gaussian Mixture #####################################
 
 if __name__ == "__main__":
     main()
