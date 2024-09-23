@@ -231,7 +231,7 @@ class ClusterPlay:
         print(f'Silhouette Score: {silhouette_avg}')
         return silhouette_avg
 
-    def plot_clusters(self, labels, title, algo_kmean=False):
+    def plot_clusters(self, labels, title, algo_kmean=False,gmm_model=None):
         # Reduce dimensions using PCA
         pca = PCA(n_components=2)
         X_pca = pca.fit_transform(self.scaled_data)
@@ -256,6 +256,75 @@ class ClusterPlay:
 
             # Add a single legend entry for centroids
             plt.scatter([], [], s=100, color=centroid_color, edgecolor='black', label='Centroids')
+            # Draw ellipses for GMM clusters
+        if gmm_model is not None:
+            for i in range(gmm_model.n_components):
+                # Get the mean and covariance of the cluster
+                mean = gmm_model.means_[i]
+                cov = gmm_model.covariances_[i]
+                # Calculate the eigenvalues and eigenvectors
+                eigenvalues, eigenvectors = np.linalg.eig(cov)
+                # Calculate the angle of the ellipse
+                angle = np.arctan2(eigenvectors[0][1], eigenvectors[0][0])
+                angle = np.degrees(angle)
+                # Calculate the width and height of the ellipse
+                width, height = 2 * np.sqrt(eigenvalues)
+                # Create the ellipse
+                ellipse = plt.matplotlib.patches.Ellipse(mean, width, height, angle=angle, color='red', alpha=0.5)
+                plt.gca().add_patch(ellipse)
+
+        plt.title(title)
+        plt.xlabel('PCA Component 1')
+        plt.ylabel('PCA Component 2')
+        plt.legend()
+        plt.show()
+        plt.savefig(f"{title.replace(' ', '_').lower()}.png")
+        plt.close()
+    def plot_clusters(self, labels, title, algo_kmean=False, gmm_model=None):
+        # Reduce dimensions using PCA
+        pca = PCA(n_components=2)
+        X_pca = pca.fit_transform(self.scaled_data)
+        plt.figure(figsize=(10, 8))
+        # Create a scatter plot for the clusters
+        scatter = plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, cmap='viridis', s=50)
+        # Add a legend for the clusters
+        unique_labels = np.unique(labels)
+        for label in unique_labels:
+            plt.scatter([], [], color=scatter.cmap(scatter.norm(label)), label=f'Cluster {label}')
+        if algo_kmean:
+            # Calculate centroids in the PCA space
+            centroids_pca = []
+            for label in unique_labels:
+                cluster_data = self.scaled_data[labels == label]
+                centroid = np.mean(cluster_data, axis=0)
+                centroids_pca.append(pca.transform([centroid]))
+            # Add centroids to the plot (only one entry in the legend)
+            for centroid in centroids_pca:
+                plt.scatter(centroid[0][0], centroid[0][1], s=100, c='yellow', edgecolor='black', marker='o')
+        # Add a single legend entry for centroids
+        plt.scatter([], [], s=100, color="yellow", edgecolor='black', label='Centroids')
+        # Draw ellipses for GMM clusters
+        if gmm_model is not None:
+            for i in range(gmm_model.n_components):
+                # Get the mean and covariance of the cluster
+                mean = gmm_model.means_[i]
+                cov = gmm_model.covariances_[i]
+                # Calculate the eigenvalues and eigenvectors
+                eigenvalues, eigenvectors = np.linalg.eig(cov)
+                # Ensure we only take the first two eigenvalues and eigenvectors for 2D plotting
+                if len(eigenvalues) > 2:
+                    eigenvalues = eigenvalues[:2]
+                    eigenvectors = eigenvectors[:, :2]
+                    # Calculate the angle of the ellipse
+                angle = np.arctan2(eigenvectors[1, 0], eigenvectors[0, 0])
+                angle = np.degrees(angle)
+            
+                # Calculate the width and height of the ellipse
+                width, height = 2 * np.sqrt(np.abs(eigenvalues))
+            
+                # Create the ellipse
+                ellipse = plt.matplotlib.patches.Ellipse(mean, width, height, angle=angle, color='red', alpha=0.5)
+                plt.gca().add_patch(ellipse)
 
         plt.title(title)
         plt.xlabel('PCA Component 1')
@@ -265,8 +334,6 @@ class ClusterPlay:
         plt.savefig(f"{title.replace(' ', '_').lower()}.png")
         plt.close()
 
-    
-    
     def aic_method_gaussian(self, max_clusters=10):
         aic_values = []
         for i in range(1, max_clusters + 1):
@@ -312,7 +379,7 @@ def main():
     # pro.elbow_method()
     ################# k-means #################################################
 
-  
+    #"""
     ## elbow method include both distortion ,elbow and graph
     print("K means")
     pro.elbow_method_kmeans()
@@ -337,17 +404,17 @@ def main():
     pro.plot_clusters(fuzzy_labels, "Fuzzy C-Means Clustering")
     #### neeed to summary clutter analysis form taj
     ######################### fuzzy k-means ########################################
-
+    #"""
 
     ######################## gaussian Mixture ####################################
     print("gaussian")
 
     pro.aic_method_gaussian()
-    gmm_labels,gmm_model = pro.gaussian_mixture_clustering(n_clusters=4)
+    gmm_labels,gmm_model = pro.gaussian_mixture_clustering(n_clusters=5)
     pro.evaluate_clustering(gmm_labels)
 
     # plot GMM 
-    pro.plot_clusters(gmm_labels, "Gaussian Mixture Model Clustering")
+    pro.plot_clusters(gmm_labels, "Gaussian Mixture Model Clustering",False,gmm_model)
     ####################### gaussian Mixture #####################################
 
 if __name__ == "__main__":
